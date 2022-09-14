@@ -10,6 +10,8 @@ export const Steps = {
   BUILD_ACCOUNT_AND_USER_RELATIONSHIP: 'build-account-and-user-relationship',
   TEAMS: 'fetch-teams',
   IMAGE_SCANS: 'fetch-image-scans',
+  PIPELINES: 'fetch-pipelines',
+  VULNERABILITIES: 'fetch-vulnerabilities',
   BUILD_ACCOUNT_AND_IMAGE_SCAN_RELATIONSHIP:
     'build-account-and-image-scan-relationship',
   BUILD_ACCOUNT_AND_TEAM_RELATIONSHIP: 'build-account-and-team-relationship',
@@ -17,7 +19,7 @@ export const Steps = {
 };
 
 export const Entities: Record<
-  'ACCOUNT' | 'USER' | 'TEAM' | 'IMAGE_SCAN',
+  'ACCOUNT' | 'USER' | 'TEAM' | 'IMAGE_SCAN' | 'PIPELINE' | 'VULNERABILITY',
   StepEntityMetadata
 > = {
   ACCOUNT: {
@@ -40,13 +42,25 @@ export const Entities: Record<
     _type: 'sysdig_image_scan',
     _class: ['Assessment'],
   },
+  PIPELINE: {
+    resourceName: 'Pipeline',
+    _type: 'sysdig_pipeline',
+    _class: ['Image'],
+  },
+  VULNERABILITY: {
+    resourceName: 'Vulnerability',
+    _type: 'sysdig_vulnerability',
+    _class: ['Vulnerability'],
+  },
 };
 
 export const Relationships: Record<
   | 'ACCOUNT_HAS_USER'
+  | 'ACCOUNT_HAS_PIPELINE'
   | 'ACCOUNT_HAS_TEAM'
   | 'TEAM_HAS_USER'
-  | 'ACCOUNT_HAS_IMAGE_SCAN',
+  | 'ACCOUNT_HAS_IMAGE_SCAN'
+  | 'PIPELINE_HAS_VULNERABILITY',
   StepRelationshipMetadata
 > = {
   ACCOUNT_HAS_USER: {
@@ -61,6 +75,12 @@ export const Relationships: Record<
     _class: RelationshipClass.HAS,
     targetType: Entities.TEAM._type,
   },
+  ACCOUNT_HAS_PIPELINE: {
+    _type: 'sysdig_account_has_pipeline',
+    sourceType: Entities.ACCOUNT._type,
+    _class: RelationshipClass.HAS,
+    targetType: Entities.PIPELINE._type,
+  },
   TEAM_HAS_USER: {
     _type: 'sysdig_team_has_user',
     sourceType: Entities.TEAM._type,
@@ -72,5 +92,11 @@ export const Relationships: Record<
     sourceType: Entities.ACCOUNT._type,
     _class: RelationshipClass.HAS,
     targetType: Entities.IMAGE_SCAN._type,
+  },
+  PIPELINE_HAS_VULNERABILITY: {
+    _type: 'sysdig_pipeline_has_vulnerability',
+    sourceType: Entities.PIPELINE._type,
+    _class: RelationshipClass.HAS,
+    targetType: Entities.VULNERABILITY._type,
   },
 };

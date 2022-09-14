@@ -7,21 +7,26 @@ import {
   PaginatedTeams,
   PaginatedUsers,
   SysdigAccount,
+  SysdigPipeline,
+  SysdigPipelineResponse,
   SysdigResult,
   SysdigResultResponse,
   SysdigTeam,
   SysdigUser,
+  SysdigVulnerability,
+  SysdigVulnerabilityResponse,
 } from './types';
+import regionHostnames from './util/regionHostnames';
 
 export type ResourceIteratee<T> = (page: T) => Promise<void>;
 
 export class APIClient {
   constructor(readonly config: IntegrationConfig) {}
 
-  private readonly paginateEntitiesPerPage = 250;
+  private readonly paginateEntitiesPerPage = 100;
 
   private withBaseUri(path: string): string {
-    return `https://${this.config.region}.app.sysdig.com/${path}`;
+    return `${regionHostnames[this.config.region]}${path}`;
   }
 
   private async request(
@@ -83,7 +88,7 @@ export class APIClient {
   /**
    * Iterates each user resource in the provider.
    *
-   * @param iteratee receives each resource to produce entities/relationships
+   * @param pageIteratee receives each resource to produce entities/relationships
    */
   public async iterateUsers(
     pageIteratee: ResourceIteratee<SysdigUser>,
@@ -108,16 +113,17 @@ export class APIClient {
 
       body = await response.json();
 
-      for (const user of body.users) {
-        await pageIteratee(user);
-      }
+      if (body.users)
+        for (const user of body.users) {
+          await pageIteratee(user);
+        }
     } while ((offset + 1) * this.paginateEntitiesPerPage < body.total);
   }
 
   /**
-   * Iterates each user resource in the provider.
+   * Iterates each team resource in the provider.
    *
-   * @param iteratee receives each resource to produce entities/relationships
+   * @param pageIteratee receives each resource to produce entities/relationships
    */
   public async iterateTeams(
     pageIteratee: ResourceIteratee<SysdigTeam>,
@@ -142,16 +148,17 @@ export class APIClient {
 
       body = await response.json();
 
-      for (const team of body.teams) {
-        await pageIteratee(team);
-      }
+      if (body.teams)
+        for (const team of body.teams) {
+          await pageIteratee(team);
+        }
     } while ((offset + 1) * this.paginateEntitiesPerPage < body.total);
   }
 
   /**
-   * Iterates each user resource in the provider.
+   * Iterates each image scan resource in the provider.
    *
-   * @param iteratee receives each resource to produce entities/relationships
+   * @param pageIteratee receives each resource to produce entities/relationships
    */
   public async iterateImageScans(
     pageIteratee: ResourceIteratee<SysdigResult>,
@@ -176,10 +183,83 @@ export class APIClient {
 
       body = await response.json();
 
-      for (const result of body.results) {
-        await pageIteratee(result);
-      }
+      if (body.results)
+        for (const result of body.results) {
+          await pageIteratee(result);
+        }
     } while ((offset + 1) * this.paginateEntitiesPerPage < body.metadata.total);
+  }
+
+  /**
+   * Iterates each pipeline resource in the provider.
+   *
+   * @param pageIteratee receives each resource to produce entities/relationships
+   */
+  public async iteratePipelines(
+    pageIteratee: ResourceIteratee<SysdigPipeline>,
+  ): Promise<void> {
+    let body: SysdigPipelineResponse;
+    let next = '';
+
+    do {
+      const endpoint = this.withBaseUri(
+        `api/scanning/scanresults/v2/results?cursor=${next}&limit=${this.paginateEntitiesPerPage}`,
+      );
+      const response = await this.request(endpoint, 'GET');
+
+      if (!response.ok) {
+        throw new IntegrationProviderAPIError({
+          endpoint,
+          status: response.status,
+          statusText: response.statusText,
+        });
+      }
+
+      body = await response.json();
+      next = body.page.next;
+
+      if (body.data)
+        for (const pipeline of body.data) {
+          await pageIteratee(pipeline);
+        }
+    } while (next);
+  }
+
+  /**
+   * Iterates each vulnerability resource in the provider.
+   *
+   * @param pageIteratee receives each resource to produce entities/relationships
+   * @param id resource id
+   */
+  public async iterateVulnerabilities(
+    id: string,
+    pageIteratee: ResourceIteratee<SysdigVulnerability>,
+  ): Promise<void> {
+    let body: SysdigVulnerabilityResponse;
+    let offset = 0;
+
+    do {
+      const endpoint = this.withBaseUri(
+        `api/scanning/scanresults/v2/results/${id}/vulnPkgs?filter&&limit=${20}&offset=${offset}&order=asc&sort=vulnSeverity`,
+      );
+      const response = await this.request(endpoint, 'GET');
+
+      if (!response.ok) {
+        throw new IntegrationProviderAPIError({
+          endpoint,
+          status: response.status,
+          statusText: response.statusText,
+        });
+      }
+
+      body = await response.json();
+      offset = body.page.returned + body.page.offset;
+
+      if (body.data)
+        for (const vulnerability of body.data) {
+          await pageIteratee(vulnerability);
+        }
+    } while (offset < body.page.matched);
   }
 }
 
