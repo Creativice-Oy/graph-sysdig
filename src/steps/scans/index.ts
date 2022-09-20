@@ -12,7 +12,12 @@ import { IntegrationConfig } from '../../config';
 import { SysdigResult } from '../../types';
 import { ACCOUNT_ENTITY_KEY } from '../account';
 import { Steps, Entities, Relationships } from '../constants';
-import { createImageScanEntity, getImageScanKey } from './converter';
+import { SCANNER_ENTITY_KEY } from '../scanner';
+import {
+  createImageScanEntity,
+  createImageScanEntityV2,
+  getImageScanKey,
+} from './converter';
 
 export async function fetchImageScans({
   instance,
@@ -46,6 +51,11 @@ export async function fetchImageScans({
       await jobState.addEntity(createImageScanEntity(scan));
     }
   });
+
+  await apiClient.iterateImageScansV2(async (scan) => {
+    const imageScanDetails = await apiClient.fetchImageScansV2Details(scan.id);
+    await jobState.addEntity(createImageScanEntityV2(imageScanDetails));
+  });
 }
 
 export async function buildAccountAndImageScansRelationship({
@@ -61,6 +71,27 @@ export async function buildAccountAndImageScansRelationship({
           createDirectRelationship({
             _class: RelationshipClass.HAS,
             from: accountEntity,
+            to: imageScanEntity,
+          }),
+        );
+      }
+    },
+  );
+}
+
+export async function buildScannerAndImageScansRelationship({
+  jobState,
+}: IntegrationStepExecutionContext<IntegrationConfig>) {
+  const scannerEntity = (await jobState.getData(SCANNER_ENTITY_KEY)) as Entity;
+
+  await jobState.iterateEntities(
+    { _type: Entities.IMAGE_SCAN._type },
+    async (imageScanEntity) => {
+      if (scannerEntity && imageScanEntity) {
+        await jobState.addRelationship(
+          createDirectRelationship({
+            _class: RelationshipClass.PERFORMED,
+            from: scannerEntity,
             to: imageScanEntity,
           }),
         );
@@ -85,5 +116,13 @@ export const scansSteps: IntegrationStep<IntegrationConfig>[] = [
     relationships: [Relationships.ACCOUNT_HAS_IMAGE_SCAN],
     dependsOn: [Steps.IMAGE_SCANS, Steps.ACCOUNT],
     executionHandler: buildAccountAndImageScansRelationship,
+  },
+  {
+    id: Steps.BUILD_SCANNER_AND_IMAGE_SCAN_RELATIONSHIP,
+    name: 'Build Scanner and Image Scan Relationship',
+    entities: [],
+    relationships: [Relationships.SCANNER_PERFORMED_IMAGE_SCAN],
+    dependsOn: [Steps.IMAGE_SCANS, Steps.SCANNER],
+    executionHandler: buildScannerAndImageScansRelationship,
   },
 ];

@@ -2,14 +2,15 @@
 
 ## Sysdig + JupiterOne Integration Benefits
 
-- Visualize Sysdig account, teams, and users in the JupiterOne graph.
+- Visualize Sysdig account, teams, users, policies, and findings in the
+  JupiterOne graph.
 - See relationships between Sysdig teams and users in your JupiterOne account.
 - Monitor changes to Sysdig users using JupiterOne alerts.
 
 ## How it Works
 
-- JupiterOne periodically fetches account details, teams, and users from Sysdig
-  to update the graph.
+- JupiterOne periodically fetches account details, teams, users, policies, and
+  findings from Sysdig to update the graph.
 - Write JupiterOne queries to review and monitor updates to the graph, or
   leverage existing queries.
 - Configure alerts to take action when JupiterOne graph changes, or leverage
@@ -81,23 +82,33 @@ https://github.com/JupiterOne/sdk/blob/main/docs/integrations/development.md
 
 The following entities are created:
 
-| Resources  | Entity `_type`      | Entity `_class` |
-| ---------- | ------------------- | --------------- |
-| Account    | `sysdig_account`    | `Account`       |
-| Image Scan | `sysdig_image_scan` | `Assessment`    |
-| Team       | `sysdig_team`       | `Team`          |
-| User       | `sysdig_user`       | `User`          |
+| Resources         | Entity `_type`             | Entity `_class` |
+| ----------------- | -------------------------- | --------------- |
+| Account           | `sysdig_account`           | `Account`       |
+| Finding           | `sysdig_finding`           | `Finding`       |
+| Image Scan        | `sysdig_image_scan`        | `Assessment`    |
+| Policy            | `sysdig_policy`            | `Policy`        |
+| Policy Evaluation | `sysdig_policy_evaluation` | `Assessment`    |
+| Scanner           | `sysdig_scanner`           | `Service`       |
+| Team              | `sysdig_team`              | `Team`          |
+| User              | `sysdig_user`              | `User`          |
 
 ### Relationships
 
 The following relationships are created:
 
-| Source Entity `_type` | Relationship `_class` | Target Entity `_type` |
-| --------------------- | --------------------- | --------------------- |
-| `sysdig_account`      | **HAS**               | `sysdig_image_scan`   |
-| `sysdig_account`      | **HAS**               | `sysdig_team`         |
-| `sysdig_account`      | **HAS**               | `sysdig_user`         |
-| `sysdig_team`         | **HAS**               | `sysdig_user`         |
+| Source Entity `_type`      | Relationship `_class` | Target Entity `_type` |
+| -------------------------- | --------------------- | --------------------- |
+| `sysdig_account`           | **HAS**               | `sysdig_image_scan`   |
+| `sysdig_account`           | **HAS**               | `sysdig_policy`       |
+| `sysdig_account`           | **HAS**               | `sysdig_team`         |
+| `sysdig_account`           | **HAS**               | `sysdig_user`         |
+| `sysdig_finding`           | **IS**                | `cve`                 |
+| `sysdig_image_scan`        | **IDENTIFIED**        | `sysdig_finding`      |
+| `sysdig_policy_evaluation` | **ENFORCES**          | `sysdig_policy`       |
+| `sysdig_policy_evaluation` | **REVIEWED**          | `sysdig_image_scan`   |
+| `sysdig_scanner`           | **PERFORMED**         | `sysdig_image_scan`   |
+| `sysdig_team`              | **HAS**               | `sysdig_user`         |
 
 <!--
 ********************************************************************************
